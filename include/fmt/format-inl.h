@@ -532,14 +532,12 @@ FMT_FUNC void grisu2_format_positive(double value, char *buffer, size_t &size,
   grisu2_gen_digits(scaled_value, scaled_upper, delta, buffer, size, dec_exp);
 }
 
-FMT_FUNC void round(char *buffer, size_t &size, int &exp,
-                    int digits_to_remove) {
+FMT_FUNC void round(char *buffer, size_t &size, int digits_to_remove) {
   size -= to_unsigned(digits_to_remove);
-  exp += digits_to_remove;
   int digit = buffer[size] - '0';
   // TODO: proper rounding and carry
   if (digit > 5 || (digit == 5 && (digits_to_remove > 1 ||
-                                   (buffer[size - 1] - '0') % 2) != 0)) {
+                                   (buffer[size - 1] - '0') % 2 != 0))) {
     ++buffer[size - 1];
   }
 }
@@ -577,8 +575,8 @@ FMT_FUNC void format_exp_notation(
   if (num_digits > 0) {
     std::uninitialized_fill_n(buffer + size + 1, num_digits, '0');
     size += to_unsigned(num_digits);
-  } else if (num_digits < 0) {
-    round(buffer, size, exp, -num_digits);
+  } else if (num_digits < 0 && precision > 0) {
+    round(buffer, size, -num_digits);
   }
   char *p = buffer + size + 1;
   *p++ = upper ? 'E' : 'e';
@@ -657,7 +655,8 @@ FMT_FUNC void grisu2_format(double value, char *buffer, size_t &size, char type,
   case '\0': case 'g': {
     int digits_to_remove = static_cast<int>(size) - precision;
     if (digits_to_remove > 0) {
-      round(buffer, size, dec_exp, digits_to_remove);
+      round(buffer, size, digits_to_remove);
+      dec_exp += digits_to_remove;
       // Remove trailing zeros.
       while (size > 0 && buffer[size - 1] == '0') {
         --size;
@@ -675,7 +674,8 @@ FMT_FUNC void grisu2_format(double value, char *buffer, size_t &size, char type,
     if (digits_to_remove > 0) {
       if (digits_to_remove >= static_cast<int>(size))
         digits_to_remove = static_cast<int>(size) - 1;
-      round(buffer, size, dec_exp, digits_to_remove);
+      round(buffer, size, digits_to_remove);
+      dec_exp += digits_to_remove;
     }
     break;
   }
