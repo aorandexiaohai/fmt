@@ -2102,21 +2102,19 @@ struct id_adapter {
   Handler &handler;
 };
 
-template <bool IS_CONSTEXPR, class InputIt, class T>
-FMT_CONSTEXPR InputIt find(InputIt first, InputIt last, const T &value) {
+template <bool IS_CONSTEXPR, typename T, typename Ptr = const T*>
+FMT_CONSTEXPR Ptr find(Ptr first, Ptr last, T value) {
   for (; first != last; ++first) {
     if (*first == value)
       return first;
   }
-  return last;
+  return nullptr;
 }
 
 template <>
-inline const char *find<false, const char*, char>(
-    const char *first, const char *last, const char &value) {
-  auto result = static_cast<const char*>(
-        std::memchr(first, value, last - first));
-  return result ? result : last;
+inline const char *find<false, char>(
+    const char *first, const char *last, char value) {
+  return static_cast<const char*>(std::memchr(first, value, last - first));
 }
 
 template <bool IS_CONSTEXPR, typename Char, typename Handler>
@@ -2126,7 +2124,7 @@ FMT_CONSTEXPR void parse_format_string(
     FMT_CONSTEXPR void operator()(const Char *begin, const Char *end) {
       for (;;) {
         auto p = find<IS_CONSTEXPR>(begin, end, '}');
-        if (p == end) {
+        if (!p) {
           handler_.on_text(begin, end);
           return;
         }
@@ -2147,7 +2145,7 @@ FMT_CONSTEXPR void parse_format_string(
     // Doing two passes with memchr (one for '{' and another for '}') is up to
     // 2.5x faster than the naive one-pass implementation on long format strings.
     auto p = find<IS_CONSTEXPR>(begin, end, '{');
-    if (p == end) {
+    if (!p) {
       if (begin != end)
         write(begin, end);
       return;
